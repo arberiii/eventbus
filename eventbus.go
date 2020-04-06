@@ -35,8 +35,21 @@ func (e EventBus) UnSubscribe(eventName string, ch DataChannel) {
 
 	for idx, subscriber := range subscribers {
 		if subscriber == ch {
-			e.events[eventName] = append(subscribers[:idx], subscribers[idx+1:]...)
-			return
+			subscribers[idx], subscribers[len(subscribers)-1] = subscribers[len(subscribers)-1], nil
+			subscribers = subscribers[:len(subscribers)-1]
+
+			if len(subscribers) == 0 {
+				delete(e.events, eventName)
+			}
+
+			// drain the channel
+			for {
+				select {
+				case <-ch:
+				default:
+					return
+				}
+			}
 		}
 	}
 }
@@ -50,9 +63,13 @@ func (e EventBus) Publish(eventName string, data Data) {
 		return
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(len(subscribers))
 	for _, subscriber := range subscribers {
 		subscriber <- data
+		wg.Done()
 	}
+	wg.Wait()
 }
 
 func NewEventBus() EventBus {
