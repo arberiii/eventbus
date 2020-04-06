@@ -35,12 +35,9 @@ func (e EventBus) UnSubscribe(eventName string, ch DataChannel) {
 
 	for idx, subscriber := range subscribers {
 		if subscriber == ch {
+			// the order of subscribers does not matter
 			subscribers[idx], subscribers[len(subscribers)-1] = subscribers[len(subscribers)-1], nil
-			subscribers = subscribers[:len(subscribers)-1]
-
-			if len(subscribers) == 0 {
-				delete(e.events, eventName)
-			}
+			e.events[eventName] = subscribers[:len(subscribers)-1]
 
 			// drain the channel
 			for {
@@ -66,8 +63,10 @@ func (e EventBus) Publish(eventName string, data Data) {
 	var wg sync.WaitGroup
 	wg.Add(len(subscribers))
 	for _, subscriber := range subscribers {
-		subscriber <- data
-		wg.Done()
+		go func(subscriber DataChannel) {
+			subscriber <- data
+			wg.Done()
+		}(subscriber)
 	}
 	wg.Wait()
 }

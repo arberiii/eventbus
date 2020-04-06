@@ -9,7 +9,7 @@ import (
 	"github.com/short-d/eventbus"
 )
 
-func TestEventBusSimple(t *testing.T) {
+func TestEventBusOne(t *testing.T) {
 	bus := eventbus.NewEventBus()
 
 	notificationChannel := make(eventbus.DataChannel)
@@ -32,43 +32,6 @@ func TestEventBusSimple(t *testing.T) {
 		}
 	}()
 
-	bus.Publish(topic, data)
-
-	if waitTimeout(&wg, 100*time.Millisecond) {
-		t.Fatal("expected data to be published, but nothing was published")
-	}
-}
-
-func TestUnSubscribe(t *testing.T) {
-	bus := eventbus.NewEventBus()
-
-	notificationChannel := make(eventbus.DataChannel)
-	topic := "greetings"
-	bus.Subscribe(topic, notificationChannel)
-	subscribed := true
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		for {
-			select {
-			case <-notificationChannel:
-				if subscribed {
-					bus.UnSubscribe(topic, notificationChannel)
-					subscribed = false
-					wg.Done()
-				} else {
-					t.Fatal("subscriber has unsubscribed but still got events")
-				}
-			}
-		}
-	}()
-
-	data := "One"
-	bus.Publish(topic, data)
-	data = "Two"
-	bus.Publish(topic, data)
-	data = "Third"
 	bus.Publish(topic, data)
 
 	if waitTimeout(&wg, 100*time.Millisecond) {
@@ -113,6 +76,43 @@ func TestEventBusMultiple(t *testing.T) {
 
 	if waitTimeout(&wg, 100*time.Millisecond) {
 		t.Fatal("expected data to be published, but some data were not published")
+	}
+}
+
+func TestUnSubscribe(t *testing.T) {
+	bus := eventbus.NewEventBus()
+
+	notificationChannel := make(eventbus.DataChannel)
+	topic := "greetings"
+	bus.Subscribe(topic, notificationChannel)
+	subscribed := true
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		for {
+			select {
+			case <-notificationChannel:
+				if subscribed {
+					bus.UnSubscribe(topic, notificationChannel)
+					subscribed = false
+					wg.Done()
+				} else {
+					t.Fatal("subscriber has unsubscribed but still got events")
+				}
+			}
+		}
+	}()
+
+	data := "One"
+	bus.Publish(topic, data)
+	data = "Two"
+	bus.Publish(topic, data)
+	data = "Third"
+	bus.Publish(topic, data)
+
+	if waitTimeout(&wg, 100*time.Millisecond) {
+		t.Fatal("expected data to be published, but nothing was published")
 	}
 }
 
