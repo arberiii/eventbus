@@ -12,7 +12,7 @@ type EventBus struct {
 	events map[string][]DataChannel
 }
 
-func (e EventBus) Subscribe(eventName string, ch DataChannel) {
+func (e *EventBus) Subscribe(eventName string, ch DataChannel) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -24,7 +24,7 @@ func (e EventBus) Subscribe(eventName string, ch DataChannel) {
 	e.events[eventName] = []DataChannel{ch}
 }
 
-func (e EventBus) UnSubscribe(eventName string, ch DataChannel) {
+func (e *EventBus) UnSubscribe(eventName string, ch DataChannel) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -51,7 +51,7 @@ func (e EventBus) UnSubscribe(eventName string, ch DataChannel) {
 	}
 }
 
-func (e EventBus) Publish(eventName string, data Data) {
+func (e *EventBus) Publish(eventName string, data Data) {
 	e.mutex.RLock()
 	defer e.mutex.RUnlock()
 
@@ -60,6 +60,19 @@ func (e EventBus) Publish(eventName string, data Data) {
 		return
 	}
 
+	for _, subscriber := range subscribers {
+		subscriber <- data
+	}
+}
+
+func (e *EventBus) PublishAsync(eventName string, data Data) {
+	e.mutex.RLock()
+	defer e.mutex.RUnlock()
+
+	subscribers, ok := e.events[eventName]
+	if !ok {
+		return
+	}
 	var wg sync.WaitGroup
 	wg.Add(len(subscribers))
 	for _, subscriber := range subscribers {
@@ -71,8 +84,8 @@ func (e EventBus) Publish(eventName string, data Data) {
 	wg.Wait()
 }
 
-func NewEventBus() EventBus {
-	return EventBus{
+func NewEventBus() *EventBus {
+	return &EventBus{
 		events: make(map[string][]DataChannel),
 	}
 }
